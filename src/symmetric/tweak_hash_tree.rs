@@ -70,6 +70,13 @@ pub struct HashTreeOpening<TH: TweakableHash> {
     co_path: Vec<TH::Domain>,
 }
 
+impl<TH: TweakableHash> HashTreeOpening<TH> {
+    /// Getter for `co_path`.
+    pub fn co_path(&self) -> &[TH::Domain] {
+        &self.co_path
+    }
+}
+
 /// Function to compute the Merkle authentication path
 /// from a tree and the position of the leaf. It is assumed
 /// that the tree is well-formed, i.e., each layer is half

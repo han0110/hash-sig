@@ -40,11 +40,40 @@ pub struct GeneralizedXMSSSignature<IE: IncomparableEncoding, TH: TweakableHash>
     hashes: Vec<TH::Domain>,
 }
 
+impl<IE: IncomparableEncoding, TH: TweakableHash> GeneralizedXMSSSignature<IE, TH> {
+    /// Getter for `path`.
+    pub fn path(&self) -> &HashTreeOpening<TH> {
+        &self.path
+    }
+
+    /// Getter for `rho`.
+    pub fn rho(&self) -> &IE::Randomness {
+        &self.rho
+    }
+
+    /// Getter for `hashes`.
+    pub fn hashes(&self) -> &[TH::Domain] {
+        &self.hashes
+    }
+}
+
 /// Public key for GeneralizedXMSSSignatureScheme
 /// It contains a Merkle root and a parameter for the tweakable hash
 pub struct GeneralizedXMSSPublicKey<TH: TweakableHash> {
     root: TH::Domain,
     parameter: TH::Parameter,
+}
+
+impl<TH: TweakableHash> GeneralizedXMSSPublicKey<TH> {
+    /// Getter for `root`.
+    pub fn root(&self) -> &TH::Domain {
+        &self.root
+    }
+
+    /// Getter for `parameter`.
+    pub fn parameter(&self) -> &TH::Parameter {
+        &self.parameter
+    }
 }
 
 /// Secret key for GeneralizedXMSSSignatureScheme
