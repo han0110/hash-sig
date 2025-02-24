@@ -33,17 +33,10 @@ fn encode_message<const MSG_LEN_FE: usize>(message: &[u8; MESSAGE_LENGTH]) -> [F
 /// Function to encode an epoch (= tweak in the message hash)
 /// as a vector of field elements.
 fn encode_epoch<const TWEAK_LEN_FE: usize>(epoch: u32) -> [F; TWEAK_LEN_FE] {
-    // convert the bytes (together with domain separator) into a number
-    let epoch_uint: BigUint = (BigUint::from(epoch) << 8) + TWEAK_SEPARATOR_FOR_MESSAGE_HASH;
-
-    // now interpret the number in base-p
-    let mut tweak_fe: [F; TWEAK_LEN_FE] = [F::zero(); TWEAK_LEN_FE];
-    tweak_fe.iter_mut().fold(epoch_uint, |acc, item| {
-        let tmp = acc.clone() % BigUint::from(FqConfig::MODULUS);
-        *item = F::from(tmp.clone());
-        (acc - tmp) / (BigUint::from(FqConfig::MODULUS))
-    });
-    tweak_fe
+    debug_assert!(epoch < 1 << (F::MODULUS_BIT_SIZE - 1 - 2));
+    let mut encoded = [F::zero(); TWEAK_LEN_FE];
+    encoded[0] = F::from((epoch << 2) | TWEAK_SEPARATOR_FOR_MESSAGE_HASH as u32);
+    encoded
 }
 
 /// Function to decode a vector of field elements into

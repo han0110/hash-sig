@@ -1,5 +1,6 @@
 use zkhash::ark_ff::MontConfig;
 use zkhash::ark_ff::One;
+use zkhash::ark_ff::PrimeField;
 use zkhash::ark_ff::UniformRand;
 use zkhash::ark_ff::Zero;
 use zkhash::poseidon2::poseidon2_instance_babybear::{
@@ -50,37 +51,29 @@ impl<const LOG_LIFETIME: usize, const CEIL_LOG_NUM_CHAINS: usize, const CHUNK_SI
         // LOG_LIFETIME + CEIL_LOG_NUM_CHAINS + CHUNK_SIZE many
         // bits.
 
-        // we first represent the entire tweak as one big integer
-        let tweak_bigint = match self {
-            PoseidonTweak::TreeTweak {
-                level,
-                pos_in_level,
-            } => {
-                (BigUint::from(*level) << 40)
-                    + (BigUint::from(*pos_in_level) << 8)
-                    + TWEAK_SEPARATOR_FOR_TREE_HASH
-            }
-            PoseidonTweak::ChainTweak {
+        match *self {
+            Self::ChainTweak {
                 epoch,
                 chain_index,
                 pos_in_chain,
             } => {
-                (BigUint::from(*epoch) << 40)
-                    + (BigUint::from(*chain_index) << 24)
-                    + (BigUint::from(*pos_in_chain) << 8)
-                    + TWEAK_SEPARATOR_FOR_CHAIN_HASH
+                const { assert!(CEIL_LOG_NUM_CHAINS <= F::MODULUS_BIT_SIZE as usize - 1 - 16) };
+                vec![
+                    F::from((epoch << 2) | TWEAK_SEPARATOR_FOR_CHAIN_HASH as u32),
+                    F::from(((chain_index as u32) << 16) | pos_in_chain as u32),
+                ]
             }
-            _ => BigUint::from(0 as u32),
-        };
-
-        // now we interpret this integer in base-p to get field elements
-        let mut tweak_fe: [F; TWEAK_LEN] = [F::zero(); TWEAK_LEN];
-        tweak_fe.iter_mut().fold(tweak_bigint, |acc, item| {
-            let tmp = acc.clone() % BigUint::from(FqConfig::MODULUS);
-            *item = F::from(tmp.clone());
-            (acc - tmp) / (BigUint::from(FqConfig::MODULUS))
-        });
-        tweak_fe.to_vec()
+            Self::TreeTweak {
+                level,
+                pos_in_level,
+            } => {
+                vec![
+                    F::from(((level as u32) << 2) | TWEAK_SEPARATOR_FOR_TREE_HASH as u32),
+                    F::from(pos_in_level),
+                ]
+            }
+            _ => unreachable!(),
+        }
     }
 }
 
