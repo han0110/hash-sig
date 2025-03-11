@@ -69,6 +69,43 @@ fn decode_to_chunks<const NUM_CHUNKS: usize, const CHUNK_SIZE: usize, const HASH
     Vec::from(hash_chunked)
 }
 
+#[test]
+fn recompose() {
+    const MODULUS: u64 = FqConfig::MODULUS.0[0];
+    const NUM_CHUNKS: usize = 78;
+    const CHUNK_SIZE: usize = 2;
+    const HASH_LEN_FE: usize = 5;
+
+    let msg_hash = rand::random();
+
+    // In circuit we decompose each chunk into bits as range check.
+    let bits = decode_to_chunks::<NUM_CHUNKS, CHUNK_SIZE, HASH_LEN_FE>(&msg_hash)
+        .into_iter()
+        .flat_map(|chunk| (0..CHUNK_SIZE).map(move |bit| F::from((chunk >> bit) & 1 == 1)))
+        .collect::<Vec<_>>();
+
+    // For the least significant limb of msg_hash, we can simply sum all bits
+    // with corresponding bases, the `% MODULUS` is done natively in circuit.
+    assert_eq!(
+        msg_hash[4],
+        bits.iter()
+            .zip((0..).map(|shift| F::from(BigUint::one() << shift)))
+            .map(|(bit, base)| *bit * base)
+            .sum::<F>(),
+    );
+
+    // For other limbs of msg_hash, we could pre-calculate bases by `/ MODULUS`,
+    // but there will be some missing carries from previous limb.
+    // (the following assertion will not hold)
+    assert_eq!(
+        msg_hash[3],
+        bits.iter()
+            .zip((0..).map(|shift| F::from((BigUint::one() << shift) / MODULUS)))
+            .map(|(bit, base)| *bit * base)
+            .sum::<F>(),
+    );
+}
+
 /// A message hash implemented using Poseidon2
 ///
 /// Note: PARAMETER_LEN, RAND_LEN, TWEAK_LEN_FE, MSG_LEN_FE, and HASH_LEN_FE
